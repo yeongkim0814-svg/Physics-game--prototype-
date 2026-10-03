@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { AABB, makeAABB } from './AABB';
 
+/** 터널링 스킬이 읽는 벽 데이터. 바깥벽은 통과하면 방 밖 허공이므로 막아 둔다. */
+export interface Wall extends AABB {
+  tunnelable: boolean;
+}
+
 export type ResourceKind = 'small' | 'large';
 export interface ResourceSpawn {
   x: number;
@@ -18,7 +23,7 @@ export class Level {
   static readonly WALL_HEIGHT = 3;
   static readonly WALL_THICKNESS = 0.5;
 
-  readonly walls: AABB[] = [];
+  readonly walls: Wall[] = [];
 
   /**
    * 큰 자원은 구석/먼 곳에 둬서 "위험을 감수하고 멀리 가야 많이 얻는다"는 선택을 만든다.
@@ -40,7 +45,8 @@ export class Level {
     this.buildFloor(scene);
     this.buildOuterWalls(scene);
     // 내부 장애물 예시: 이후 Phase 5의 경로 설계 자리
-    this.addWall(scene, 0, -1, 4, 0.5);
+    this.addWall(scene, 0, -1, 4, 0.5, true); // 두께 1.0: 터널링이 어렵다
+    this.addWall(scene, 4, 3, 0.125, 1.5, true); // 두께 0.25: 에너지가 낮아도 해볼 만하다
   }
 
   private buildLights(scene: THREE.Scene): void {
@@ -72,14 +78,15 @@ export class Level {
     this.addWall(scene, half + t / 2, 0, t / 2, half);
   }
 
-  private addWall(scene: THREE.Scene, cx: number, cz: number, hx: number, hz: number): void {
+  private addWall(scene: THREE.Scene, cx: number, cz: number, hx: number, hz: number, tunnelable = false): void {
     const h = Level.WALL_HEIGHT;
+    // 통과 가능한 벽은 푸른 기운을 줘서, 시각만으로 "이건 뚫을 수 있다"가 읽히게 한다.
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(hx * 2, h, hz * 2),
-      new THREE.MeshStandardMaterial({ color: 0x9aa0a6 }),
+      new THREE.MeshStandardMaterial({ color: tunnelable ? 0x7f9fcf : 0x9aa0a6 }),
     );
     mesh.position.set(cx, h / 2, cz);
     scene.add(mesh);
-    this.walls.push(makeAABB(cx, cz, hx, hz));
+    this.walls.push({ ...makeAABB(cx, cz, hx, hz), tunnelable });
   }
 }

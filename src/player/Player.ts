@@ -24,6 +24,13 @@ export class Player implements Updatable, Renderable {
   yaw = 0;
   pitch = 0;
 
+  /** 터널링 성공 시 벽을 통과하는 짧은 구간. 충돌을 끄고 from→to를 보간한다. */
+  static readonly PHASE_TIME = 0.3;
+  private static readonly BASE_FOV = 75;
+  private phase: { from: THREE.Vector2; to: THREE.Vector2; t: number } | null = null;
+  /** 반사(터널링 실패) 때 받는 반동. 입력 속도와 따로 두어야 입력 보간이 반동을 즉시 지우지 않는다. */
+  private readonly knock = new THREE.Vector2();
+
   /** 모든 스킬이 공유하는 단일 자원. 자연 회복이 없다(회복은 환경 자원 수집뿐). */
   energy = Player.START_ENERGY;
 
@@ -51,8 +58,37 @@ export class Player implements Updatable, Renderable {
     return true;
   }
 
+  /** 수평 시선 방향(단위벡터). 카메라가 -z를 보는 기준에서 yaw만큼 회전. x=-sin, y(=z)=-cos. */
+  facing(out = new THREE.Vector2()): THREE.Vector2 {
+    return out.set(-Math.sin(this.yaw), -Math.cos(this.yaw));
+  }
+
+  isPhasing(): boolean {
+    return this.phase !== null;
+  }
+
+  startPhase(to: THREE.Vector2): void {
+    this.phase = { from: this.position.clone(), to: to.clone(), t: 0 };
+    this.velocity.set(0, 0);
+    this.knock.set(0, 0);
+  }
+
+  applyKnockback(dirX: number, dirZ: number, speed: number): void {
+    this.knock.set(dirX * speed, dirZ * speed);
+  }
+
   update(dt: number): void {
     this.prevPosition.copy(this.position);
+
+    if (this.phase) {
+      this.phase.t += dt;
+      const u = Math.min(1, this.phase.t / Player.PHASE_TIME);
+      // smoothstep: 벽 앞에서 가속해 뚫고 나가며 감속 — 순간이동이 아니라 "통과"로 보이게.
+      const k = u * u * (3 - 2 * u);
+      this.position.lerpVectors(this.phase.from, this.phase.to, k);
+      if (u >= 1) this.phase = null;
+      return;
+    }
 
     // 로컬 입력(앞=-z, 오른쪽=+x)을 yaw로 회전해 월드 방향으로 변환.
     // 입력 크기(0~1)를 속도에 곱해, 스틱을 살짝 기울이면 천천히 걷게 한다.
@@ -70,8 +106,10 @@ export class Player implements Updatable, Renderable {
     this.velocity.x += (tx - this.velocity.x) * k;
     this.velocity.y += (tz - this.velocity.y) * k;
 
-    this.moveAxis('x', this.velocity.x * dt);
-    this.moveAxis('y', this.velocity.y * dt);
+    this.moveAxis('x', (this.velocity.x + this.knock.x) * dt);
+    this.moveAxis('y', (this.velocity.y + this.knock.y) * dt);
+    // 지수 감쇠: 처음엔 세게 밀려나고 빠르게 잦아든다(밀려난 거리 ≈ 초기속도/8).
+    this.knock.multiplyScalar(Math.exp(-8 * dt));
   }
 
   /**
@@ -90,6 +128,7 @@ export class Player implements Updatable, Renderable {
         this.position.y = delta > 0 ? wall.minZ - Player.RADIUS : wall.maxZ + Player.RADIUS;
       }
       this.velocity[axis] = 0;
+      this.knock[axis] = 0;
       // 이후 벽과도 겹칠 수 있으므로 box 재계산.
       box.minX = this.position.x - Player.RADIUS;
       box.maxX = this.position.x + Player.RADIUS;
@@ -108,5 +147,13 @@ export class Player implements Updatable, Renderable {
     const z = THREE.MathUtils.lerp(this.prevPosition.y, this.position.y, alpha);
     this.camera.position.set(x, Player.EYE_HEIGHT, z);
     this.camera.rotation.set(this.pitch, this.yaw, 0);
+
+    // 통과 중 FOV를 넓혔다 되돌려 속도감을 준다. 값이 바뀔 때만 투영행렬을 갱신(비용 절약).
+    const progress = this.phase ? Math.min(1, this.phase.t / Player.PHASE_TIME) : 0;
+    const fov = Player.BASE_FOV + 22 * Math.sin(Math.PI * progress);
+    if (Math.abs(this.camera.fov - fov) > 0.01) {
+      this.camera.fov = fov;
+      this.camera.updateProjectionMatrix();
+    }
   }
 }
