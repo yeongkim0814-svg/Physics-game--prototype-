@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Physics Skill Game</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #111; }
+      #app { position: fixed; inset: 0; }
+      #hint {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        color: #ddd; font: 16px/1.6 system-ui, sans-serif; text-align: center;
+        background: rgba(0,0,0,.55); cursor: pointer; user-select: none;
+      }
+      #hint.hidden { display: none; }
+      #crosshair {
+        position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+        border-radius: 50%; background: rgba(255,255,255,.8); pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="crosshair"></div>
+    <div id="hint">클릭해서 시작<br />WASD 이동 · 마우스 시점 · Shift 달리기 · Esc 해제</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
