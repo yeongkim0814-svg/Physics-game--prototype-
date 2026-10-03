@@ -95,6 +95,10 @@ export class TunnelingSkill implements Updatable {
   }
 
   update(dt: number): void {
+    if (this.player.dead) {
+      this.input.consumePressed();
+      return;
+    }
     this.cooldown = Math.max(0, this.cooldown - dt);
     this.probe = this.player.isPhasing() ? null : this.computeProbe();
 

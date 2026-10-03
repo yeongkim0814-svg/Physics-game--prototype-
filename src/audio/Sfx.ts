@@ -45,4 +45,20 @@ export class Sfx {
   pickup(): void {
     this.tone(700, 1000, 0.1, 'sine', 0.1);
   }
+
+  /** 적에게 발각: 짧은 두 번의 높은 비프(경보). */
+  alert(): void {
+    this.tone(900, 900, 0.07, 'square', 0.07);
+    setTimeout(() => this.tone(1200, 1200, 0.09, 'square', 0.07), 90);
+  }
+
+  /** 피격: 낮고 거친 타격음. */
+  hurt(): void {
+    this.tone(160, 50, 0.25, 'sawtooth', 0.16);
+  }
+
+  /** 적 격파: 에너지가 빠지는 하강음. */
+  kill(): void {
+    this.tone(500, 80, 0.3, 'triangle', 0.14);
+  }
 }

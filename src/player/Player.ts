@@ -5,6 +5,9 @@ import type { Input } from './Input';
 
 export class Player implements Updatable, Renderable {
   static readonly RADIUS = 0.3;
+  static readonly MAX_HEALTH = 100;
+  /** 피격 후 무적 시간. 겹친 채로 매 프레임 맞아 한 번에 죽는 일을 막고, 도망칠 틈을 준다. */
+  static readonly INVULN_TIME = 1.0;
   static readonly MAX_ENERGY = 100;
   // 빈손으로 시작하게 해서 "먼저 자원을 모아야 스킬을 쓴다"는 압박을 만든다.
   static readonly START_ENERGY = 30;
@@ -31,6 +34,10 @@ export class Player implements Updatable, Renderable {
   /** 반사(터널링 실패) 때 받는 반동. 입력 속도와 따로 두어야 입력 보간이 반동을 즉시 지우지 않는다. */
   private readonly knock = new THREE.Vector2();
 
+  health = Player.MAX_HEALTH;
+  dead = false;
+  private invuln = 0;
+
   /** 모든 스킬이 공유하는 단일 자원. 자연 회복이 없다(회복은 환경 자원 수집뿐). */
   energy = Player.START_ENERGY;
 
@@ -39,6 +46,28 @@ export class Player implements Updatable, Renderable {
     private readonly input: Input,
     private readonly walls: readonly AABB[],
   ) {}
+
+  /** 현재 이동 속도(m/s). 적의 청각 판정(달리면 소리가 크다)에 쓴다. */
+  speed(): number {
+    return this.velocity.length();
+  }
+
+  isInvulnerable(): boolean {
+    return this.invuln > 0;
+  }
+
+  /** 피해를 입혔으면 true. 무적 중이거나 이미 죽었으면 false. */
+  takeDamage(amount: number, fromX: number, fromZ: number): boolean {
+    if (this.dead || this.invuln > 0) return false;
+    this.health = Math.max(0, this.health - amount);
+    this.invuln = Player.INVULN_TIME;
+    const dx = this.position.x - fromX;
+    const dz = this.position.y - fromZ;
+    const d = Math.hypot(dx, dz) || 1;
+    this.applyKnockback(dx / d, dz / d, 6);
+    if (this.health <= 0) this.dead = true;
+    return true;
+  }
 
   isEnergyFull(): boolean {
     return this.energy >= Player.MAX_ENERGY;
@@ -79,6 +108,7 @@ export class Player implements Updatable, Renderable {
 
   update(dt: number): void {
     this.prevPosition.copy(this.position);
+    this.invuln = Math.max(0, this.invuln - dt);
 
     if (this.phase) {
       this.phase.t += dt;
@@ -87,6 +117,15 @@ export class Player implements Updatable, Renderable {
       const k = u * u * (3 - 2 * u);
       this.position.lerpVectors(this.phase.from, this.phase.to, k);
       if (u >= 1) this.phase = null;
+      return;
+    }
+
+    // 죽으면 입력을 무시하고 서서히 멈춘다(반동만 남아 쓰러지는 느낌).
+    if (this.dead) {
+      this.velocity.set(0, 0);
+      this.moveAxis('x', this.knock.x * dt);
+      this.moveAxis('y', this.knock.y * dt);
+      this.knock.multiplyScalar(Math.exp(-8 * dt));
       return;
     }
 
