@@ -44,13 +44,6 @@
       }
       #stick-base { width: 120px; height: 120px; border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); }
       #stick-knob { width: 52px; height: 52px; background: rgba(255,255,255,.5); }
-      #run-btn {
-        position: fixed; right: max(24px, env(safe-area-inset-right)); bottom: max(24px, env(safe-area-inset-bottom));
-        width: 76px; height: 76px; border-radius: 50%;
-        border: 2px solid rgba(255,255,255,.45); background: rgba(255,255,255,.12);
-        color: #fff; font: 600 15px system-ui, sans-serif; display: flex; align-items: center; justify-content: center;
-      }
-      #run-btn.active { background: rgba(255,255,255,.4); }
     </style>
   </head>
   <body>
@@ -59,7 +52,6 @@
     <div id="touch-ui">
       <div id="stick-base"></div>
       <div id="stick-knob"></div>
-      <div id="run-btn">달리기</div>
     </div>
     <div id="hint">
       <div>
@@ -67,7 +59,6 @@
         <span class="touch-only">
           화면을 터치해서 시작<br />
           왼쪽 드래그: 이동 · 오른쪽 드래그: 시점<br />
-          오른쪽 아래 버튼: 달리기<br />
           <small>가로 모드를 권장합니다</small>
         </span>
       </div>

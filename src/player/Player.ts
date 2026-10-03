@@ -33,7 +33,9 @@ export class Player implements Updatable, Renderable {
     // 로컬 입력(앞=-z, 오른쪽=+x)을 yaw로 회전해 월드 방향으로 변환.
     // 입력 크기(0~1)를 속도에 곱해, 스틱을 살짝 기울이면 천천히 걷게 한다.
     const { x: ix, z: iz } = this.input.getMove();
-    const speed = this.input.isRunning() ? Player.RUN_SPEED : Player.WALK_SPEED;
+    // 터치에서는 스틱 크기가 0~1로 이미 아날로그이므로 RUN_SPEED를 기본값으로(전체 속도 범위가 0~RUN).
+    // 키보드에서는 이동 벡터가 정규화되므로 Shift로 WALK/RUN 선택.
+    const speed = (this.input.isTouch || this.input.isRunning()) ? Player.RUN_SPEED : Player.WALK_SPEED;
     const cos = Math.cos(this.yaw);
     const sin = Math.sin(this.yaw);
     const tx = (ix * cos + iz * sin) * speed;

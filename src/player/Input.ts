@@ -27,11 +27,9 @@ export class Input {
   private readonly stick: MoveVector = { x: 0, z: 0 };
   private lookId: number | null = null;
   private lookLast = { x: 0, y: 0 };
-  private runHeld = false;
 
   private readonly stickBase = document.getElementById('stick-base')!;
   private readonly stickKnob = document.getElementById('stick-knob')!;
-  private readonly runBtn = document.getElementById('run-btn')!;
 
   constructor(private readonly lockTarget: HTMLElement, private readonly hint: HTMLElement) {
     document.body.classList.toggle('touch', this.isTouch);
@@ -80,11 +78,6 @@ export class Input {
     if (!this.locked || e.pointerType === 'mouse') return;
     e.preventDefault();
 
-    if ((e.target as Element).closest('#run-btn')) {
-      this.runHeld = true;
-      this.runBtn.classList.add('active');
-      return;
-    }
     // 화면 좌/우 절반으로 역할을 나눈다. 멀티터치로 이동+시점을 동시에 쓸 수 있다.
     if (e.clientX < window.innerWidth / 2) {
       if (this.stickId !== null) return;
@@ -105,14 +98,33 @@ export class Input {
       let dx = e.clientX - this.stickOrigin.x;
       let dy = e.clientY - this.stickOrigin.y;
       const len = Math.hypot(dx, dy);
-      // 반경 밖으로 끌어도 노브는 원 위에 머물고, 입력 크기는 1로 포화.
+
+      // 노브 시각: 반경 밖으로 끌어도 원 위에 머물고 입력 크기는 1로 포화.
+      let knobDx = dx;
+      let knobDy = dy;
       if (len > Input.STICK_RADIUS) {
-        dx = (dx / len) * Input.STICK_RADIUS;
-        dy = (dy / len) * Input.STICK_RADIUS;
+        knobDx = (dx / len) * Input.STICK_RADIUS;
+        knobDy = (dy / len) * Input.STICK_RADIUS;
       }
-      this.stick.x = dx / Input.STICK_RADIUS;
-      this.stick.z = dy / Input.STICK_RADIUS;
-      this.showStick(this.stickOrigin.x, this.stickOrigin.y, this.stickOrigin.x + dx, this.stickOrigin.y + dy);
+
+      // 아날로그 입력: deadzone(엄지 편차 무시) + early saturation(끝까지 민다 = 스프린트 캐치하기 쉬움).
+      const DEAD = 0.1;
+      const FULL = 0.85;
+      const raw = Math.min(len / Input.STICK_RADIUS, 1);
+      const mag = Math.max(0, Math.min(1, (raw - DEAD) / (FULL - DEAD)));
+
+      // 크기가 0이면 방향도 영벡터, 아니면 정규화.
+      if (len > 0) {
+        const dirX = dx / len;
+        const dirY = dy / len;
+        this.stick.x = dirX * mag;
+        this.stick.z = dirY * mag;
+      } else {
+        this.stick.x = 0;
+        this.stick.z = 0;
+      }
+
+      this.showStick(this.stickOrigin.x, this.stickOrigin.y, this.stickOrigin.x + knobDx, this.stickOrigin.y + knobDy);
     } else if (e.pointerId === this.lookId) {
       e.preventDefault();
       this.mouseDX += (e.clientX - this.lookLast.x) * Input.TOUCH_LOOK_SCALE;
@@ -130,11 +142,6 @@ export class Input {
       this.stickKnob.style.display = 'none';
     } else if (e.pointerId === this.lookId) {
       this.lookId = null;
-    }
-    // 달리기 버튼은 어떤 포인터든 떼면 해제(버튼을 누른 손가락 id를 따로 추적하면 코드만 늘어난다).
-    if ((e.target as Element).closest?.('#run-btn')) {
-      this.runHeld = false;
-      this.runBtn.classList.remove('active');
     }
   };
 
@@ -169,7 +176,7 @@ export class Input {
   }
 
   isRunning(): boolean {
-    return this.isTouch ? this.runHeld : this.keys.has('ShiftLeft');
+    return this.isTouch ? false : this.keys.has('ShiftLeft');
   }
 
   /** 누적된 시점 이동량을 꺼내고 0으로 리셋. */
