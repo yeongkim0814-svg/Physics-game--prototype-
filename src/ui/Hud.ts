@@ -3,6 +3,8 @@ import { Player } from '../player/Player';
 import type { ResourceManager } from '../resource/ResourceManager';
 import { TUNNEL } from '../skills/TunnelingSkill';
 import type { TunnelingSkill } from '../skills/TunnelingSkill';
+import { ANNIHILATE } from '../skills/AnnihilationSkill';
+import type { AnnihilationSkill } from '../skills/AnnihilationSkill';
 
 const CSS = `
 #hud { position: fixed; left: max(16px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top));
@@ -22,7 +24,8 @@ const CSS = `
 #hud-prompt { position: fixed; left: 50%; top: 56%; z-index: 1; pointer-events: none; transform: translateX(-50%);
   font: 700 18px var(--font); text-shadow: 0 2px 6px #000; text-align: center; display: none; white-space: nowrap; }
 #hud-prompt small { display: block; font: 500 12px var(--font); opacity: .85; }
-#hud-prompt.hi { color: var(--green); } #hud-prompt.mid { color: var(--amber); } #hud-prompt.lo { color: var(--bad); } #hud-prompt.na { color: var(--text); }
+#hud-prompt .p + .p { margin-top: 8px; }
+#hud-prompt .hi { color: var(--green); } #hud-prompt .mid { color: var(--amber); } #hud-prompt .lo { color: var(--bad); } #hud-prompt .na { color: var(--text); } #hud-prompt .em { color: var(--cyan); }
 #hud-flash { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0; }
 #hud-flash.good { background: radial-gradient(circle, rgba(111,196,192,0) 30%, rgba(111,196,192,.55) 100%); animation: hudflash .45s ease-out; }
 #hud-flash.bad { background: radial-gradient(circle, rgba(192,69,46,0) 30%, rgba(192,69,46,.55) 100%); animation: hudflash .45s ease-out; }
@@ -49,6 +52,7 @@ export class Hud implements Renderable {
     private readonly player: Player,
     private readonly resources: ResourceManager,
     private readonly skill: TunnelingSkill,
+    private readonly annihilate: AnnihilationSkill,
     private readonly isTouch: boolean,
   ) {
     const style = document.createElement('style');
@@ -126,30 +130,62 @@ export class Hud implements Renderable {
   }
 
   private updateSkill(): void {
+    // 두 스킬의 안내를 한 프롬프트에 쌓는다: 벽 앞에서 상자를 보고 있어도 둘 다 보이게.
+    const parts: string[] = [];
+    const key = this.isTouch ? '버튼' : 'E';
     const pr = this.skill.probe;
-    let html = '';
-    let cls = '';
     if (pr) {
-      const key = this.isTouch ? '버튼' : 'E';
       if (!pr.landing) {
-        html = '반대편이 막혀 있음';
-        cls = 'na';
+        parts.push('<div class="p na">반대편이 막혀 있음</div>');
       } else if (!this.skill.canAfford()) {
-        html = `에너지 부족 <small>${TUNNEL.COST}⚡ 필요</small>`;
-        cls = 'na';
+        parts.push(`<div class="p na">에너지 부족 <small>${TUNNEL.COST}⚡ 필요</small></div>`);
       } else {
         const pct = Math.round(pr.probability * 100);
-        cls = pct >= 60 ? 'hi' : pct >= 30 ? 'mid' : 'lo';
+        const cls = pct >= 60 ? 'hi' : pct >= 30 ? 'mid' : 'lo';
         // 확률과 함께 두께·비용을 보여줘, 플레이어가 "왜 이 확률인지"를 읽고 에너지를 모으러 갈지 결정하게 한다.
-        html = `터널링 ${pct}%<small>벽 ${pr.thickness.toFixed(2)}m · -${TUNNEL.COST}⚡ · ${key}</small>`;
+        parts.push(`<div class="p ${cls}">터널링 ${pct}%<small>벽 ${pr.thickness.toFixed(2)}m · -${TUNNEL.COST}⚡ · ${key}</small></div>`);
       }
     }
-    const sig = cls + html;
-    if (sig !== this.lastPrompt) {
-      this.lastPrompt = sig;
+    const an = this.annihilate.probe;
+    if (an) {
+      const akey = this.isTouch ? '버튼' : 'Q';
+      if (this.player.isEnergyFull()) {
+        parts.push('<div class="p na">에너지 가득 <small>남겨 두면 나중에 쓸 수 있다</small></div>');
+      } else if (!this.annihilate.canAfford()) {
+        parts.push(`<div class="p na">에너지 부족 <small>${ANNIHILATE.COST}⚡ 필요</small></div>`);
+      } else {
+        // E=mc²를 그대로 보여준다: 질량 → 얻는 에너지, 그리고 폭발 반경(가까이 서면 내가 밀려난다).
+        const m = an.crate.mass;
+        parts.push(
+          `<div class="p em">E=mc² +${an.yield}⚡<small>${m}kg · 폭발 반경 ${an.radius.toFixed(1)}m · -${ANNIHILATE.COST}⚡ · ${akey}</small></div>`,
+        );
+      }
+    }
+    const html = parts.join('');
+    if (html !== this.lastPrompt) {
+      this.lastPrompt = html;
       this.prompt.style.display = html ? 'block' : 'none';
-      this.prompt.className = cls;
       this.prompt.innerHTML = html;
+    }
+
+    let burstGain = 0;
+    let burstCount = 0;
+    for (const ev of this.annihilate.drainEvents()) {
+      if (ev.type === 'annihilate') {
+        burstGain += ev.gained;
+        burstCount++;
+      } else if (ev.type === 'noenergy') {
+        this.showPop('에너지 부족', 'bad');
+      } else {
+        this.showPop('에너지 가득', 'bad');
+      }
+    }
+    if (burstCount > 0) {
+      // 연쇄 폭발은 한 프레임에 여러 번 올 수 있어 합산해 한 번만 띄운다.
+      this.showPop(`${burstCount > 1 ? `연쇄 ×${burstCount} ` : ''}+${burstGain}⚡`, 'good');
+      this.showFlash('good');
+      this.bar.classList.add('flash');
+      this.flashUntil = performance.now() + 250;
     }
 
     for (const ev of this.skill.drainEvents()) {

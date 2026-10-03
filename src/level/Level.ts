@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { AABB, makeAABB } from './AABB';
+import { Crate } from './Crate';
 import { COL } from '../render/palette';
 import { patchRetro } from '../render/snap';
 import { ceilingTexture, floorTexture, wallTexture, worldUV } from '../render/textures';
@@ -27,6 +28,9 @@ export class Level {
   static readonly WALL_THICKNESS = 0.5;
 
   readonly walls: Wall[] = [];
+  /** E=mc² 스킬이 소멸시킬 수 있는 물질 덩어리. 충돌 AABB는 walls에도 함께 들어 있다. */
+  readonly crates: Crate[] = [];
+  private scene: THREE.Scene;
 
   /**
    * 큰 자원은 구석/먼 곳에 둬서 "위험을 감수하고 멀리 가야 많이 얻는다"는 선택을 만든다.
@@ -44,12 +48,37 @@ export class Level {
   ];
 
   constructor(scene: THREE.Scene) {
+    this.scene = scene;
     this.buildLights(scene);
     this.buildFloor(scene);
     this.buildOuterWalls(scene);
     // 내부 장애물 예시: 이후 Phase 5의 경로 설계 자리
     this.addWall(scene, 0, -1, 4, 0.5, true); // 두께 1.0: 터널링이 어렵다
     this.addWall(scene, 4, 3, 0.125, 1.5, true); // 두께 0.25: 에너지가 낮아도 해볼 만하다
+
+    // 질량 1~3kg. 왼쪽 틈(x -6~-4)은 2m 상자 두 개가 막아, 소멸시켜야 지나갈 수 있다(연쇄 폭발 시연).
+    this.addCrate(-4.6, -1.0, 2);
+    this.addCrate(-5.5, -1.0, 2);
+    this.addCrate(-3, 4.2, 1);
+    this.addCrate(2, 1.6, 2);
+    this.addCrate(2.6, -3.6, 1);
+    this.addCrate(-1.2, -4.6, 3);
+    this.addCrate(5.2, 0.6, 1);
+  }
+
+  private addCrate(x: number, z: number, mass: number): void {
+    const c = new Crate(x, z, mass);
+    this.crates.push(c);
+    this.walls.push(c.wall);
+    this.scene.add(c.mesh);
+  }
+
+  /** 소멸 시 충돌체와 목록에서 즉시 제거(길이 바로 열린다). 메시는 호출 측이 연출 후 dispose. */
+  removeCrate(c: Crate): void {
+    const wi = this.walls.indexOf(c.wall);
+    if (wi >= 0) this.walls.splice(wi, 1);
+    const ci = this.crates.indexOf(c);
+    if (ci >= 0) this.crates.splice(ci, 1);
   }
 
   private buildLights(scene: THREE.Scene): void {

@@ -10,6 +10,7 @@ import { Sfx } from './audio/Sfx';
 import { Particles } from './skills/Particles';
 import { SkillInput } from './skills/SkillInput';
 import { TunnelingSkill } from './skills/TunnelingSkill';
+import { AnnihilationSkill } from './skills/AnnihilationSkill';
 
 const engine = new GameEngine(document.getElementById('app')!);
 engine.scene.background = new THREE.Color(0x0d0f0a);
@@ -21,13 +22,16 @@ const player = new Player(engine.camera, input, level.walls);
 const resources = new ResourceManager(engine.scene, player, level.resourceSpawns);
 const sfx = new Sfx();
 const particles = new Particles(engine.scene);
-const skillInput = new SkillInput(input.isTouch);
-const tunneling = new TunnelingSkill(player, level.walls, skillInput, particles, sfx);
-const hud = new Hud(player, resources, tunneling, input.isTouch);
+const tunnelInput = new SkillInput(input.isTouch, { code: 'KeyE', id: 'skill-tunnel', label: '터널링<br />⇢|⇢' });
+const annihilateInput = new SkillInput(input.isTouch, { code: 'KeyQ', id: 'skill-annihilate', label: 'E=mc²<br />✺' });
+const tunneling = new TunnelingSkill(player, level.walls, tunnelInput, particles, sfx);
+const annihilation = new AnnihilationSkill(engine.scene, player, level, annihilateInput, particles);
+const hud = new Hud(player, resources, tunneling, annihilation, input.isTouch);
 
 engine.addUpdatable(player);
 engine.addUpdatable(resources);
 engine.addUpdatable(tunneling);
+engine.addUpdatable(annihilation);
 engine.addUpdatable(particles);
 engine.addRenderable(player);
 engine.addRenderable(resources);
@@ -36,5 +40,5 @@ engine.start();
 
 // 개발 중 콘솔/자동 테스트에서 상태를 들여다보기 위한 훅. 프로덕션 빌드에서는 트리셰이킹으로 제거된다.
 if (import.meta.env.DEV) {
-  (window as unknown as { __game: unknown }).__game = { engine, level, player, input, resources, tunneling };
+  (window as unknown as { __game: unknown }).__game = { engine, level, player, input, resources, tunneling, annihilation };
 }

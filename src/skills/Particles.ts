@@ -8,9 +8,17 @@ interface Burst {
   life: number;
 }
 
+interface Ring {
+  mesh: THREE.Mesh;
+  age: number;
+  life: number;
+  radius: number;
+}
+
 /** 일회성 입자 폭발. 풀링 없이 생성/폐기 — 스킬 사용 빈도가 낮아 단순함을 택했다. */
 export class Particles implements Updatable {
   private readonly bursts: Burst[] = [];
+  private readonly rings: Ring[] = [];
 
   constructor(private readonly scene: THREE.Scene) {}
 
@@ -42,7 +50,40 @@ export class Particles implements Updatable {
     this.bursts.push({ points, velocities: vel, age: 0, life });
   }
 
+  /** 바닥에 퍼지는 충격파 고리. 폭발 "범위"가 눈에 보여야 플레이어가 반경을 배운다. */
+  shockwave(at: THREE.Vector3, radius: number, color: number, life = 0.45): void {
+    const mesh = new THREE.Mesh(
+      new THREE.RingGeometry(0.88, 1, 40),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(at.x, 0.06, at.z);
+    mesh.scale.setScalar(0.01);
+    this.scene.add(mesh);
+    this.rings.push({ mesh, age: 0, life, radius });
+  }
+
   update(dt: number): void {
+    for (let i = this.rings.length - 1; i >= 0; i--) {
+      const r = this.rings[i];
+      r.age += dt;
+      const t = Math.min(1, r.age / r.life);
+      // ease-out: 처음에 빠르게 퍼지다 감속 — 폭발 직후의 충격이 먼저 오는 느낌.
+      r.mesh.scale.setScalar(Math.max(0.01, r.radius * (1 - (1 - t) * (1 - t))));
+      (r.mesh.material as THREE.MeshBasicMaterial).opacity = 1 - t;
+      if (t >= 1) {
+        this.scene.remove(r.mesh);
+        r.mesh.geometry.dispose();
+        (r.mesh.material as THREE.Material).dispose();
+        this.rings.splice(i, 1);
+      }
+    }
     for (let i = this.bursts.length - 1; i >= 0; i--) {
       const b = this.bursts[i];
       b.age += dt;
