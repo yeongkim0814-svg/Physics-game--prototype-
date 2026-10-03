@@ -1,6 +1,13 @@
 import * as THREE from 'three';
 import { AABB, makeAABB } from './AABB';
 
+export type ResourceKind = 'small' | 'large';
+export interface ResourceSpawn {
+  x: number;
+  z: number;
+  kind: ResourceKind;
+}
+
 /**
  * 방 하나(기본 12m × 12m)와 벽/바닥.
  * 시각용 메시와 충돌용 AABB를 같은 데이터에서 만들어 둘이 어긋나지 않게 한다.
@@ -12,6 +19,21 @@ export class Level {
   static readonly WALL_THICKNESS = 0.5;
 
   readonly walls: AABB[] = [];
+
+  /**
+   * 큰 자원은 구석/먼 곳에 둬서 "위험을 감수하고 멀리 가야 많이 얻는다"는 선택을 만든다.
+   * 총량(작은 5×10 + 큰 3×25 = 125)은 최대 에너지(100)보다 약간 많아, 다 줍지 않아도 되지만 넉넉하진 않다.
+   */
+  readonly resourceSpawns: readonly ResourceSpawn[] = [
+    { x: -4.5, z: 2.5, kind: 'small' },
+    { x: 3.5, z: 3.5, kind: 'small' },
+    { x: -2.5, z: -3.5, kind: 'small' },
+    { x: 4.5, z: -2.5, kind: 'small' },
+    { x: 0, z: -4.5, kind: 'small' },
+    { x: 0, z: 1.2, kind: 'large' },
+    { x: -5, z: -5, kind: 'large' },
+    { x: 5, z: -5.2, kind: 'large' },
+  ];
 
   constructor(scene: THREE.Scene) {
     this.buildLights(scene);
