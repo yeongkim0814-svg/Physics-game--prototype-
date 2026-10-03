@@ -5,6 +5,9 @@ import type { Input } from './Input';
 
 export class Player implements Updatable, Renderable {
   static readonly RADIUS = 0.3;
+  static readonly MAX_ENERGY = 100;
+  // 빈손으로 시작하게 해서 "먼저 자원을 모아야 스킬을 쓴다"는 압박을 만든다.
+  static readonly START_ENERGY = 30;
   static readonly EYE_HEIGHT = 1.6;
   static readonly WALK_SPEED = 4;
   static readonly RUN_SPEED = 7;
@@ -21,11 +24,32 @@ export class Player implements Updatable, Renderable {
   yaw = 0;
   pitch = 0;
 
+  /** 모든 스킬이 공유하는 단일 자원. 자연 회복이 없다(회복은 환경 자원 수집뿐). */
+  energy = Player.START_ENERGY;
+
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
     private readonly input: Input,
     private readonly walls: readonly AABB[],
   ) {}
+
+  isEnergyFull(): boolean {
+    return this.energy >= Player.MAX_ENERGY;
+  }
+
+  /** 실제로 채워진 양을 반환(상한에서 잘린 만큼은 버려진다). */
+  addEnergy(amount: number): number {
+    const before = this.energy;
+    this.energy = Math.min(Player.MAX_ENERGY, this.energy + amount);
+    return this.energy - before;
+  }
+
+  /** 부족하면 아무것도 소비하지 않고 false. 스킬 발동 가능 여부 판정과 소비를 한 번에 처리한다. */
+  spendEnergy(amount: number): boolean {
+    if (this.energy < amount) return false;
+    this.energy -= amount;
+    return true;
+  }
 
   update(dt: number): void {
     this.prevPosition.copy(this.position);
