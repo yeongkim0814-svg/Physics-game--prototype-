@@ -13,6 +13,10 @@ import { TunnelingSkill } from './skills/TunnelingSkill';
 import { AnnihilationSkill } from './skills/AnnihilationSkill';
 import { EnemyManager } from './enemy/EnemyManager';
 import { HealthHud } from './ui/HealthHud';
+import { GameState } from './game/GameState';
+import { Objective } from './objective/Objective';
+import { MissionHud } from './ui/MissionHud';
+import { ResultScreen } from './ui/ResultScreen';
 
 const engine = new GameEngine(document.getElementById('app')!);
 engine.scene.background = new THREE.Color(0x0d0f0a);
@@ -33,20 +37,33 @@ const enemies = new EnemyManager(engine.scene, player, level, level.enemySpawns,
 annihilation.onBlast.push((b) => enemies.onBlast(b));
 const hud = new Hud(player, resources, tunneling, annihilation, input.isTouch);
 
+const objective = new Objective(engine.scene, level.objective.x, level.objective.z);
+const game = new GameState(player, objective, sfx, () => ({
+  tunnelOk: tunneling.counts.success,
+  tunnelFail: tunneling.counts.fail,
+  crates: annihilation.cratesDestroyed,
+  kills: enemies.counts.kills,
+  spotted: enemies.counts.spotted,
+}));
+
 engine.addUpdatable(player);
 engine.addUpdatable(resources);
 engine.addUpdatable(tunneling);
 engine.addUpdatable(annihilation);
 engine.addUpdatable(enemies);
+engine.addUpdatable(game);
 engine.addUpdatable(particles);
 engine.addRenderable(player);
 engine.addRenderable(resources);
 engine.addRenderable(enemies);
 engine.addRenderable(hud);
 engine.addRenderable(new HealthHud(player, enemies));
+engine.addRenderable(objective);
+engine.addRenderable(new MissionHud(player, objective, game));
+engine.addRenderable(new ResultScreen(game));
 engine.start();
 
 // 개발 중 콘솔/자동 테스트에서 상태를 들여다보기 위한 훅. 프로덕션 빌드에서는 트리셰이킹으로 제거된다.
 if (import.meta.env.DEV) {
-  (window as unknown as { __game: unknown }).__game = { engine, level, player, input, resources, tunneling, annihilation, enemies };
+  (window as unknown as { __game: unknown }).__game = { engine, level, player, input, resources, tunneling, annihilation, enemies, game, objective };
 }
