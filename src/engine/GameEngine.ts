@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RetroPipeline } from '../render/retro';
 
 export interface Updatable {
   /** 고정 간격(FIXED_DT)으로 호출. 게임 로직 전용. */
@@ -20,7 +21,11 @@ export class GameEngine {
   // 탭 전환 등으로 dt가 폭주해 "죽음의 나선"(따라잡으려다 더 느려짐)에 빠지는 것을 방지.
   private static readonly MAX_FRAME_TIME = 0.25;
 
+  /** 저해상도 렌더 높이(px). 가로는 화면 비율로 정한다. */
+  private static readonly RENDER_HEIGHT = 270;
+
   readonly renderer: THREE.WebGLRenderer;
+  private readonly retro: RetroPipeline;
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
 
@@ -31,11 +36,10 @@ export class GameEngine {
   private running = false;
 
   constructor(container: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    // 모바일 GPU는 fill-rate가 병목이라 해상도 배율을 낮게 제한한다.
-    const isTouch = window.matchMedia('(pointer: coarse)').matches;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouch ? 1.5 : 2));
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    // 안티앨리어싱 끔: 저해상도 픽셀 느낌을 일부러 살리고, 모바일 GPU 비용도 줄인다.
+    this.renderer = new THREE.WebGLRenderer({ antialias: false });
+    this.retro = new RetroPipeline(this.renderer);
+    this.retro.setResolution(GameEngine.RENDER_HEIGHT, window.innerWidth / window.innerHeight);
     container.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -76,13 +80,13 @@ export class GameEngine {
 
     const alpha = this.accumulator / GameEngine.FIXED_DT;
     for (const r of this.renderables) r.render(alpha);
-    this.renderer.render(this.scene, this.camera);
+    this.retro.render(this.scene, this.camera, now);
     requestAnimationFrame(this.frame);
   };
 
   private readonly onResize = (): void => {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.retro.setResolution(GameEngine.RENDER_HEIGHT, window.innerWidth / window.innerHeight);
   };
 }

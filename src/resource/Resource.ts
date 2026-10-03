@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { ResourceKind } from '../level/Level';
+import { COL } from '../render/palette';
+import { patchRetro } from '../render/snap';
 
 interface KindSpec {
   energy: number;
@@ -8,8 +10,8 @@ interface KindSpec {
 }
 
 export const RESOURCE_SPECS: Record<ResourceKind, KindSpec> = {
-  small: { energy: 10, coreRadius: 0.16, color: 0x3fe0ff },
-  large: { energy: 25, coreRadius: 0.28, color: 0xffb13b },
+  small: { energy: 10, coreRadius: 0.16, color: COL.cyan },
+  large: { energy: 25, coreRadius: 0.28, color: COL.amber },
 };
 
 let haloTexture: THREE.CanvasTexture | null = null;
@@ -54,11 +56,14 @@ export class Resource {
     // emissive를 써서 조명이 어두운 곳에서도 스스로 빛나 보이게 한다.
     this.core = new THREE.Mesh(
       new THREE.IcosahedronGeometry(this.spec.coreRadius, 0),
-      new THREE.MeshStandardMaterial({
-        color: this.spec.color,
-        emissive: this.spec.color,
-        emissiveIntensity: 1.6,
-      }),
+      patchRetro(
+        new THREE.MeshLambertMaterial({
+          color: this.spec.color,
+          emissive: this.spec.color,
+          emissiveIntensity: 1.1,
+          flatShading: true,
+        }),
+      ),
     );
     this.halo = new THREE.Sprite(
       new THREE.SpriteMaterial({

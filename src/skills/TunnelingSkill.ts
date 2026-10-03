@@ -5,6 +5,7 @@ import type { Wall } from '../level/Level';
 import { makeAABB, overlaps } from '../level/AABB';
 import { Player } from '../player/Player';
 import type { Sfx } from '../audio/Sfx';
+import { COL } from '../render/palette';
 import type { Particles } from './Particles';
 import type { SkillInput } from './SkillInput';
 
@@ -163,13 +164,13 @@ export class TunnelingSkill implements Updatable {
     const y = 1.0;
     if (Math.random() < probe.probability) {
       this.player.startPhase(probe.landing);
-      this.particles.burst(new THREE.Vector3(probe.hit.x, y, probe.hit.y), 0x7df9ff, 40, 3);
-      this.particles.burst(new THREE.Vector3(probe.exit.x, y, probe.exit.y), 0x7df9ff, 40, 3);
+      this.particles.burst(new THREE.Vector3(probe.hit.x, y, probe.hit.y), COL.cyan, 40, 3);
+      this.particles.burst(new THREE.Vector3(probe.exit.x, y, probe.exit.y), COL.cyan, 40, 3);
       this.sfx.success();
       this.events.push({ type: 'success', probability: probe.probability });
     } else {
       this.player.applyKnockback(-probe.dir.x, -probe.dir.y, TUNNEL.KNOCKBACK);
-      this.particles.burst(new THREE.Vector3(probe.hit.x, y, probe.hit.y), 0xff5a4a, 30, 4, 0.5);
+      this.particles.burst(new THREE.Vector3(probe.hit.x, y, probe.hit.y), COL.red, 30, 4, 0.5);
       this.sfx.fail();
       this.events.push({ type: 'fail', probability: probe.probability });
     }
