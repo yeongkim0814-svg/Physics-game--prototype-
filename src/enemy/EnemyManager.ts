@@ -24,6 +24,8 @@ const NOISE_PER_RADIUS = 3;
 
 export class EnemyManager implements Updatable, Renderable {
   readonly enemies: Enemy[] = [];
+  /** 통계용 누적. */
+  readonly counts = { kills: 0, spotted: 0 };
   private readonly events: EnemyEvent[] = [];
 
   constructor(
@@ -79,6 +81,7 @@ export class EnemyManager implements Updatable, Renderable {
     this.particles.burst(at, COL.red, 34, 3.5, 0.6);
     this.particles.burst(at, COL.amber, 18, 2.5, 0.5);
     this.sfx.kill();
+    this.counts.kills++;
     this.events.push({ type: 'kill' });
     e.dispose(this.scene);
     this.enemies.splice(index, 1);
@@ -88,10 +91,11 @@ export class EnemyManager implements Updatable, Renderable {
     const p = this.player.position;
     const speed = this.player.speed();
     for (const e of this.enemies) {
-      if (this.player.dead) break;
+      if (this.player.inactive()) break;
       e.update(dt, p, speed, this.level.walls);
       if (e.justSpotted) {
         this.sfx.alert();
+        this.counts.spotted++;
         this.events.push({ type: 'spotted' });
       }
       // 접촉 피해: 몸이 닿으면 피해 + 반동(무적 시간 동안은 중복 피해 없음).

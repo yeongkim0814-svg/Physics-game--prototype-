@@ -84,6 +84,8 @@ interface Primed {
 
 export class AnnihilationSkill implements Updatable {
   probe: AnnihilateProbe | null = null;
+  /** 통계용: 소멸시킨 상자 수(연쇄 포함). */
+  cratesDestroyed = 0;
   cooldown = 0;
   /** 폭발 구독자(Phase 4의 적 피해 등). 쌓아 두지 않고 즉시 호출해 누수가 없다. */
   readonly onBlast: ((b: BlastEvent) => void)[] = [];
@@ -111,7 +113,7 @@ export class AnnihilationSkill implements Updatable {
   }
 
   update(dt: number): void {
-    if (this.player.dead) {
+    if (this.player.inactive()) {
       this.input.consumePressed();
       return;
     }
@@ -170,6 +172,7 @@ export class AnnihilationSkill implements Updatable {
   /** 상자 하나를 소멸시킨다: 충돌 제거 → 에너지 충전 → 폭발(충격·연쇄) → 연출. */
   private detonate(crate: Crate): void {
     this.level.removeCrate(crate);
+    this.cratesDestroyed++;
     crate.primed = true;
     this.fading.push({ crate, t: 0 });
 

@@ -61,4 +61,14 @@ export class Sfx {
   kill(): void {
     this.tone(500, 80, 0.3, 'triangle', 0.14);
   }
+
+  /** 탈출 성공: 짧은 상승 아르페지오. */
+  win(): void {
+    [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, f, 0.18, 'triangle', 0.14), i * 110));
+  }
+
+  /** 게임 오버: 느린 하강음. */
+  lose(): void {
+    this.tone(330, 55, 0.7, 'sawtooth', 0.14);
+  }
 }

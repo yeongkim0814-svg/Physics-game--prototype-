@@ -36,6 +36,8 @@ export class Player implements Updatable, Renderable {
 
   health = Player.MAX_HEALTH;
   dead = false;
+  /** 승리/시간 초과로 게임이 끝났을 때: 사망과 달리 체력은 그대로지만 조작·피해를 멈춘다. */
+  frozen = false;
   private invuln = 0;
 
   /** 모든 스킬이 공유하는 단일 자원. 자연 회복이 없다(회복은 환경 자원 수집뿐). */
@@ -52,13 +54,17 @@ export class Player implements Updatable, Renderable {
     return this.velocity.length();
   }
 
+  inactive(): boolean {
+    return this.dead || this.frozen;
+  }
+
   isInvulnerable(): boolean {
     return this.invuln > 0;
   }
 
   /** 피해를 입혔으면 true. 무적 중이거나 이미 죽었으면 false. */
   takeDamage(amount: number, fromX: number, fromZ: number): boolean {
-    if (this.dead || this.invuln > 0) return false;
+    if (this.dead || this.frozen || this.invuln > 0) return false;
     this.health = Math.max(0, this.health - amount);
     this.invuln = Player.INVULN_TIME;
     const dx = this.position.x - fromX;
@@ -121,7 +127,7 @@ export class Player implements Updatable, Renderable {
     }
 
     // 죽으면 입력을 무시하고 서서히 멈춘다(반동만 남아 쓰러지는 느낌).
-    if (this.dead) {
+    if (this.dead || this.frozen) {
       this.velocity.set(0, 0);
       this.moveAxis('x', this.knock.x * dt);
       this.moveAxis('y', this.knock.y * dt);

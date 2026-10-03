@@ -73,6 +73,8 @@ function rayAABB(ox: number, oz: number, dx: number, dz: number, b: Wall): { tIn
 
 export class TunnelingSkill implements Updatable {
   probe: TunnelProbe | null = null;
+  /** 통계용 누적 횟수(결과 화면). */
+  readonly counts = { success: 0, fail: 0 };
   cooldown = 0;
   private readonly events: TunnelEvent[] = [];
   private readonly dir = new THREE.Vector2();
@@ -95,7 +97,7 @@ export class TunnelingSkill implements Updatable {
   }
 
   update(dt: number): void {
-    if (this.player.dead) {
+    if (this.player.inactive()) {
       this.input.consumePressed();
       return;
     }
@@ -170,11 +172,13 @@ export class TunnelingSkill implements Updatable {
       this.player.startPhase(probe.landing);
       this.particles.burst(new THREE.Vector3(probe.hit.x, y, probe.hit.y), COL.cyan, 40, 3);
       this.particles.burst(new THREE.Vector3(probe.exit.x, y, probe.exit.y), COL.cyan, 40, 3);
+      this.counts.success++;
       this.sfx.success();
       this.events.push({ type: 'success', probability: probe.probability });
     } else {
       this.player.applyKnockback(-probe.dir.x, -probe.dir.y, TUNNEL.KNOCKBACK);
       this.particles.burst(new THREE.Vector3(probe.hit.x, y, probe.hit.y), COL.red, 30, 4, 0.5);
+      this.counts.fail++;
       this.sfx.fail();
       this.events.push({ type: 'fail', probability: probe.probability });
     }
