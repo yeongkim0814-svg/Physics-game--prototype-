@@ -10,6 +10,13 @@ export interface Wall extends AABB {
   tunnelable: boolean;
 }
 
+export type EnemyKind = 'sentry' | 'hound';
+export interface EnemySpawn {
+  kind: EnemyKind;
+  /** 순찰 경로(왕복). 첫 점이 시작 위치. */
+  path: readonly (readonly [number, number])[];
+}
+
 export type ResourceKind = 'small' | 'large';
 export interface ResourceSpawn {
   x: number;
@@ -36,6 +43,15 @@ export class Level {
    * 큰 자원은 구석/먼 곳에 둬서 "위험을 감수하고 멀리 가야 많이 얻는다"는 선택을 만든다.
    * 총량(작은 5×10 + 큰 3×25 = 125)은 최대 에너지(100)보다 약간 많아, 다 줍지 않아도 되지만 넉넉하진 않다.
    */
+  /**
+   * 감시병은 위쪽 방(자원이 많은 쪽)을 지키고, 사냥개는 왼쪽 통로를 훑는다.
+   * 시작 위치(0,4)에서 5m 이상 떨어뜨려, 들어오자마자 발각되는 일이 없게 했다.
+   */
+  readonly enemySpawns: readonly EnemySpawn[] = [
+    { kind: 'sentry', path: [[-3, -2.8], [3.6, -2.8]] },
+    { kind: 'hound', path: [[-5.2, 5.2], [-5.2, 1.8]] },
+  ];
+
   readonly resourceSpawns: readonly ResourceSpawn[] = [
     { x: -4.5, z: 2.5, kind: 'small' },
     { x: 3.5, z: 3.5, kind: 'small' },
