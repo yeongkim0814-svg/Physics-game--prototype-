@@ -31,26 +31,13 @@ export class Player implements Updatable, Renderable {
     this.prevPosition.copy(this.position);
 
     // 로컬 입력(앞=-z, 오른쪽=+x)을 yaw로 회전해 월드 방향으로 변환.
-    let ix = 0;
-    let iz = 0;
-    if (this.input.isDown('KeyW')) iz -= 1;
-    if (this.input.isDown('KeyS')) iz += 1;
-    if (this.input.isDown('KeyA')) ix -= 1;
-    if (this.input.isDown('KeyD')) ix += 1;
-
-    const speed = this.input.isDown('ShiftLeft') ? Player.RUN_SPEED : Player.WALK_SPEED;
-    const len = Math.hypot(ix, iz);
-    let tx = 0;
-    let tz = 0;
-    if (len > 0) {
-      // 정규화하지 않으면 대각선 이동이 √2배 빨라진다.
-      ix /= len;
-      iz /= len;
-      const cos = Math.cos(this.yaw);
-      const sin = Math.sin(this.yaw);
-      tx = (ix * cos + iz * sin) * speed;
-      tz = (-ix * sin + iz * cos) * speed;
-    }
+    // 입력 크기(0~1)를 속도에 곱해, 스틱을 살짝 기울이면 천천히 걷게 한다.
+    const { x: ix, z: iz } = this.input.getMove();
+    const speed = this.input.isRunning() ? Player.RUN_SPEED : Player.WALK_SPEED;
+    const cos = Math.cos(this.yaw);
+    const sin = Math.sin(this.yaw);
+    const tx = (ix * cos + iz * sin) * speed;
+    const tz = (-ix * sin + iz * cos) * speed;
 
     // 지수 보간으로 목표속도에 접근: 프레임레이트와 무관(고정 dt)하고 급정지 느낌 완화.
     const k = 1 - Math.exp(-Player.ACCEL * dt);

@@ -32,7 +32,9 @@ export class GameEngine {
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // 모바일 GPU는 fill-rate가 병목이라 해상도 배율을 낮게 제한한다.
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouch ? 1.5 : 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(this.renderer.domElement);
 
@@ -41,6 +43,8 @@ export class GameEngine {
     this.camera.rotation.order = 'YXZ';
 
     window.addEventListener('resize', this.onResize);
+    // 모바일은 회전 직후 innerWidth가 늦게 갱신되는 경우가 있어 한 번 더 맞춘다.
+    window.addEventListener('orientationchange', () => setTimeout(this.onResize, 200));
   }
 
   addUpdatable(u: Updatable): void {
