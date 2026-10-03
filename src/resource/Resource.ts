@@ -17,7 +17,7 @@ export const RESOURCE_SPECS: Record<ResourceKind, KindSpec> = {
 let haloTexture: THREE.CanvasTexture | null = null;
 
 /** 부드러운 원형 광륜 텍스처. 어두운 방에서도 멀리서 눈에 띄게 하려는 것(조명 추가 없이 저렴하게). */
-function getHaloTexture(): THREE.CanvasTexture {
+export function getHaloTexture(): THREE.CanvasTexture {
   if (haloTexture) return haloTexture;
   const c = document.createElement('canvas');
   c.width = c.height = 64;

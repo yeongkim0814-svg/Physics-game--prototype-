@@ -44,13 +44,19 @@ export class Level {
    * 총량(작은 5×10 + 큰 3×25 = 125)은 최대 에너지(100)보다 약간 많아, 다 줍지 않아도 되지만 넉넉하진 않다.
    */
   /**
-   * 감시병은 위쪽 방(자원이 많은 쪽)을 지키고, 사냥개는 왼쪽 통로를 훑는다.
+   * 감시병은 북쪽 방을 순찰하고, 사냥개는 정면 경로(오른쪽 통로)를 지킨다. 왼쪽은 비어 있지만 폭발 소음이 두 적을 부른다.
    * 시작 위치(0,4)에서 5m 이상 떨어뜨려, 들어오자마자 발각되는 일이 없게 했다.
    */
   readonly enemySpawns: readonly EnemySpawn[] = [
     { kind: 'sentry', path: [[-3, -2.8], [3.6, -2.8]] },
-    { kind: 'hound', path: [[-5.2, 5.2], [-5.2, 1.8]] },
+    { kind: 'hound', path: [[5.4, 4.8], [5.4, 2.0]] },
   ];
+
+  /**
+   * 탈출 목표(핵심 샘플). 북쪽 방 안쪽 끝에 있어 세 경로 중 하나로 안쪽에 들어가야 한다:
+   *  정면 = 오른쪽 틈(열려 있지만 두 적이 지킴), 우회 = 안쪽 벽 터널링, 소멸 = 왼쪽 상자 제거(소음).
+   */
+  readonly objective = { x: 0, z: -5.3 };
 
   readonly resourceSpawns: readonly ResourceSpawn[] = [
     { x: -4.5, z: 2.5, kind: 'small' },
@@ -69,7 +75,7 @@ export class Level {
     this.buildFloor(scene);
     this.buildOuterWalls(scene);
     // 내부 장애물 예시: 이후 Phase 5의 경로 설계 자리
-    this.addWall(scene, 0, -1, 4, 0.5, true); // 두께 1.0: 터널링이 어렵다
+    this.addWall(scene, 0, -1, 4, 0.6, true); // 두께 1.2: 에너지 100에서도 약 59%, 60이면 약 41%라 확실한 우회로는 아니다
     this.addWall(scene, 4, 3, 0.125, 1.5, true); // 두께 0.25: 에너지가 낮아도 해볼 만하다
 
     // 질량 1~3kg. 왼쪽 틈(x -6~-4)은 2m 상자 두 개가 막아, 소멸시켜야 지나갈 수 있다(연쇄 폭발 시연).
