@@ -1,3 +1,4 @@
+import './theme.css';
 import * as THREE from 'three';
 import { GameEngine } from './engine/GameEngine';
 import { Level } from './level/Level';
@@ -11,7 +12,7 @@ import { SkillInput } from './skills/SkillInput';
 import { TunnelingSkill } from './skills/TunnelingSkill';
 
 const engine = new GameEngine(document.getElementById('app')!);
-engine.scene.background = new THREE.Color(0x15181c);
+engine.scene.background = new THREE.Color(0x0d0f0a);
 
 const level = new Level(engine.scene);
 const input = new Input(engine.renderer.domElement, document.getElementById('hint')!);

@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "galmuri": "^2.40.3",
     "three": "^0.186.1"
   },
   "devDependencies": {

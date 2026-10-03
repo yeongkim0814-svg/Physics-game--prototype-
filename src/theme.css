@@ -1,0 +1,46 @@
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('../node_modules/galmuri/dist/Galmuri11.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+:root {
+  --bg: #0d0f0a;
+  --letterbox: #000;
+  --panel: rgba(22, 26, 18, 0.9);
+  --text: #cfc89a;
+  --amber: #d89a2e;
+  --amber-dim: rgba(216, 154, 46, 0.55);
+  --amber-faint: rgba(216, 154, 46, 0.18);
+  --bad: #c0452e;
+  --cyan: #6fc4c0;
+  --green: #7fbf6a;
+  --yellow: #b9a02c;
+  --font: 'Galmuri11', ui-monospace, monospace;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--letterbox);
+}
+
+#app {
+  position: fixed;
+}
+
+#app canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  display: block;
+}
+
+#app::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px);
+}

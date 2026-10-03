@@ -6,26 +6,26 @@ import type { TunnelingSkill } from '../skills/TunnelingSkill';
 
 const CSS = `
 #hud { position: fixed; left: max(16px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top));
-  z-index: 1; pointer-events: none; font: 600 14px/1.3 system-ui, sans-serif; color: #e8f6ff; text-shadow: 0 1px 3px #000; }
+  z-index: 1; pointer-events: none; font: 600 14px/1.3 var(--font); color: var(--amber); text-shadow: 0 0 6px rgba(255,140,30,.45); }
 #hud .row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-#hud .bar { position: relative; width: 170px; height: 14px; border-radius: 7px; overflow: hidden;
-  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.35); }
-#hud .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg,#1fb6ff,#7df9ff); }
-#hud .bar.low .fill { background: linear-gradient(90deg,#ff5a4a,#ffb13b); }
-#hud .bar.flash { box-shadow: 0 0 12px 3px rgba(125,249,255,.9); }
+#hud .bar { position: relative; width: 170px; height: 14px; border-radius: 0; overflow: hidden;
+  background: var(--panel); border: 2px solid var(--amber); }
+#hud .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg,#b97a1a,#d89a2e); }
+#hud .bar.low .fill { background: var(--bad); }
+#hud .bar.flash { box-shadow: 0 0 12px 3px rgba(216,154,46,.55); }
 #hud .bar { transition: box-shadow .25s; }
 #hud-pop { position: fixed; left: 50%; top: 38%; z-index: 1; pointer-events: none; transform: translateX(-50%);
-  font: 700 28px system-ui, sans-serif; color: #7df9ff; text-shadow: 0 2px 6px #000; opacity: 0; }
-#hud-pop.large { color: #ffb13b; font-size: 34px; }
-#hud-pop.good { color: #7df9ff; }
-#hud-pop.bad { color: #ff6a5a; }
+  font: 700 28px var(--font); color: var(--amber); text-shadow: 0 2px 6px #000; opacity: 0; }
+#hud-pop.large { color: var(--amber); font-size: 34px; }
+#hud-pop.good { color: var(--cyan); }
+#hud-pop.bad { color: var(--bad); }
 #hud-prompt { position: fixed; left: 50%; top: 56%; z-index: 1; pointer-events: none; transform: translateX(-50%);
-  font: 700 18px system-ui, sans-serif; text-shadow: 0 2px 6px #000; text-align: center; display: none; white-space: nowrap; }
-#hud-prompt small { display: block; font: 500 12px system-ui, sans-serif; opacity: .85; }
-#hud-prompt.hi { color: #6dff9c; } #hud-prompt.mid { color: #ffd84a; } #hud-prompt.lo { color: #ff7a5a; } #hud-prompt.na { color: #b8c0c8; }
+  font: 700 18px var(--font); text-shadow: 0 2px 6px #000; text-align: center; display: none; white-space: nowrap; }
+#hud-prompt small { display: block; font: 500 12px var(--font); opacity: .85; }
+#hud-prompt.hi { color: var(--green); } #hud-prompt.mid { color: var(--amber); } #hud-prompt.lo { color: var(--bad); } #hud-prompt.na { color: var(--text); }
 #hud-flash { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0; }
-#hud-flash.good { background: radial-gradient(circle, rgba(125,249,255,0) 30%, rgba(80,200,255,.65) 100%); animation: hudflash .45s ease-out; }
-#hud-flash.bad { background: radial-gradient(circle, rgba(255,60,40,0) 30%, rgba(255,60,40,.6) 100%); animation: hudflash .45s ease-out; }
+#hud-flash.good { background: radial-gradient(circle, rgba(111,196,192,0) 30%, rgba(111,196,192,.55) 100%); animation: hudflash .45s ease-out; }
+#hud-flash.bad { background: radial-gradient(circle, rgba(192,69,46,0) 30%, rgba(192,69,46,.55) 100%); animation: hudflash .45s ease-out; }
 @keyframes hudflash { 0% { opacity: 1; } 100% { opacity: 0; } }
 #hud-pop.show { animation: hudpop .8s ease-out forwards; }
 @keyframes hudpop { 0% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -40px); } }

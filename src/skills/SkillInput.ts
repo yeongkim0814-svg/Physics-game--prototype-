@@ -1,9 +1,9 @@
 const CSS = `
-.ui-btn { position: fixed; z-index: 2; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  border: 2px solid rgba(255,255,255,.5); background: rgba(80,140,255,.22); color: #fff; text-align: center;
-  font: 700 14px/1.2 system-ui, sans-serif; touch-action: none; user-select: none; }
+.ui-btn { position: fixed; z-index: 2; border-radius: 0; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--amber-dim); background: var(--panel); color: var(--amber); text-align: center;
+  font: 700 14px/1.2 var(--font); touch-action: none; user-select: none; }
 body:not(.playing) .ui-btn { display: none; }
-.ui-btn.ready { background: rgba(80,200,255,.5); box-shadow: 0 0 14px 2px rgba(125,249,255,.8); }
+.ui-btn.ready { background: var(--amber); color: var(--bg); box-shadow: 0 0 10px rgba(255,140,30,.7); }
 .ui-btn.disabled { opacity: .45; }
 #skill-tunnel { right: max(24px, env(safe-area-inset-right)); bottom: max(28px, env(safe-area-inset-bottom)); width: 88px; height: 88px; }
 `;
