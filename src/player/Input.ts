@@ -25,6 +25,8 @@ export class Input {
   private stickId: number | null = null;
   private stickOrigin = { x: 0, y: 0 };
   private readonly stick: MoveVector = { x: 0, z: 0 };
+  private sprintLocked = false;
+  private stickLastDir = { x: 0, z: 0 };
   private lookId: number | null = null;
   private lookLast = { x: 0, y: 0 };
 
@@ -84,6 +86,10 @@ export class Input {
       this.stickId = e.pointerId;
       // 플로팅 스틱: 손가락이 처음 닿은 곳이 중심. 고정 위치보다 엄지 위치 편차에 강하다.
       this.stickOrigin = { x: e.clientX, y: e.clientY };
+      // 스프린트 잠금 리셋: 새 터치는 이전 상태를 지운다.
+      this.sprintLocked = false;
+      this.stickLastDir = { x: 0, z: 0 };
+      this.stickKnob.classList.remove('locked');
       this.showStick(e.clientX, e.clientY, e.clientX, e.clientY);
     } else {
       if (this.lookId !== null) return;
@@ -99,30 +105,50 @@ export class Input {
       let dy = e.clientY - this.stickOrigin.y;
       const len = Math.hypot(dx, dy);
 
-      // 노브 시각: 반경 밖으로 끌어도 원 위에 머물고 입력 크기는 1로 포화.
+      // 아날로그 입력: deadzone(엄지 편차 무시) + early saturation(끝까지 민다 = 스프린트 캐치하기 쉬움).
+      const DEAD = 0.1;
+      const FULL = 0.85;
+      const LOCK = 0.97;
+      const raw = Math.min(len / Input.STICK_RADIUS, 1);
+
+      // 스프린트 잠금: raw >= 0.97이면 locked 상태로 진입한다.
+      if (raw >= LOCK) {
+        this.sprintLocked = true;
+      }
+
+      let mag = Math.max(0, Math.min(1, (raw - DEAD) / (FULL - DEAD)));
+
+      // 잠금 중: 크기는 1로 고정.
+      if (this.sprintLocked) {
+        mag = 1;
+      }
+
+      // 방향: deadzone > raw일 때는 마지막 방향 유지(시선 정조준 안 흔들린다).
+      // 아니면 현재 엄지 방향을 따른다.
+      if (len > 0 && raw > DEAD) {
+        const dirX = dx / len;
+        const dirY = dy / len;
+        this.stickLastDir.x = dirX;
+        this.stickLastDir.z = dirY;
+      }
+
+      this.stick.x = this.stickLastDir.x * mag;
+      this.stick.z = this.stickLastDir.z * mag;
+
+      // 노브 시각: 반경 밖으로 끌어도 원 위에 머문다. 잠금 중에는 엄지 위치와 무관하게
+      // 마지막 방향의 반경 위에 고정해, "잠겼다"는 상태가 화면에서 읽히게 한다.
       let knobDx = dx;
       let knobDy = dy;
-      if (len > Input.STICK_RADIUS) {
+      if (this.sprintLocked) {
+        knobDx = this.stickLastDir.x * Input.STICK_RADIUS;
+        knobDy = this.stickLastDir.z * Input.STICK_RADIUS;
+      } else if (len > Input.STICK_RADIUS) {
         knobDx = (dx / len) * Input.STICK_RADIUS;
         knobDy = (dy / len) * Input.STICK_RADIUS;
       }
 
-      // 아날로그 입력: deadzone(엄지 편차 무시) + early saturation(끝까지 민다 = 스프린트 캐치하기 쉬움).
-      const DEAD = 0.1;
-      const FULL = 0.85;
-      const raw = Math.min(len / Input.STICK_RADIUS, 1);
-      const mag = Math.max(0, Math.min(1, (raw - DEAD) / (FULL - DEAD)));
-
-      // 크기가 0이면 방향도 영벡터, 아니면 정규화.
-      if (len > 0) {
-        const dirX = dx / len;
-        const dirY = dy / len;
-        this.stick.x = dirX * mag;
-        this.stick.z = dirY * mag;
-      } else {
-        this.stick.x = 0;
-        this.stick.z = 0;
-      }
+      // 잠금 UI 표시/제거.
+      this.stickKnob.classList.toggle('locked', this.sprintLocked);
 
       this.showStick(this.stickOrigin.x, this.stickOrigin.y, this.stickOrigin.x + knobDx, this.stickOrigin.y + knobDy);
     } else if (e.pointerId === this.lookId) {
@@ -138,6 +164,8 @@ export class Input {
       this.stickId = null;
       this.stick.x = 0;
       this.stick.z = 0;
+      this.sprintLocked = false;
+      this.stickKnob.classList.remove('locked');
       this.stickBase.style.display = 'none';
       this.stickKnob.style.display = 'none';
     } else if (e.pointerId === this.lookId) {
