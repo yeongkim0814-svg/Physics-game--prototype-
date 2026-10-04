@@ -34,10 +34,19 @@ export class GameEngine {
   private accumulator = 0;
   private lastTime = 0;
   private running = false;
+  /**
+   * true면 로직 갱신을 멈춘다(시작 안내 화면, 포인터 해제 등). 타이머·적 순찰이 플레이어 모르게 진행되는 것을 막는다.
+   * 정지 중에는 몇 프레임만 그리고 멈춰, 모바일 배터리를 아끼고 발열을 줄인다.
+   */
+  paused: () => boolean = () => false;
+  private pausedFrames = 0;
+  private dirty = true;
 
   constructor(container: HTMLElement) {
     // 안티앨리어싱 끔: 저해상도 픽셀 느낌을 일부러 살리고, 모바일 GPU 비용도 줄인다.
     this.renderer = new THREE.WebGLRenderer({ antialias: false });
+    // 한 프레임에 렌더가 두 번(장면+후처리) 일어나므로 통계가 덮어쓰이지 않게 수동으로 리셋한다(디버그 표시용).
+    this.renderer.info.autoReset = false;
     this.retro = new RetroPipeline(this.renderer);
     this.retro.setResolution(GameEngine.RENDER_HEIGHT, window.innerWidth / window.innerHeight);
     container.appendChild(this.renderer.domElement);
@@ -49,6 +58,11 @@ export class GameEngine {
     window.addEventListener('resize', this.onResize);
     // 모바일은 회전 직후 innerWidth가 늦게 갱신되는 경우가 있어 한 번 더 맞춘다.
     window.addEventListener('orientationchange', () => setTimeout(this.onResize, 200));
+  }
+
+  /** DebugStats 등이 현재 렌더 해상도를 읽는다. */
+  renderSize(): { width: number; height: number } {
+    return { width: this.retro.width, height: this.retro.height };
   }
 
   addUpdatable(u: Updatable): void {
@@ -72,14 +86,27 @@ export class GameEngine {
     const frameTime = Math.min(now - this.lastTime, GameEngine.MAX_FRAME_TIME);
     this.lastTime = now;
 
-    this.accumulator += frameTime;
-    while (this.accumulator >= GameEngine.FIXED_DT) {
-      for (const u of this.updatables) u.update(GameEngine.FIXED_DT);
-      this.accumulator -= GameEngine.FIXED_DT;
+    if (this.paused()) {
+      this.accumulator = 0;
+      // 정지 직후 몇 프레임(+리사이즈 직후)만 그려 화면을 최신으로 유지하고, 이후엔 렌더를 건너뛴다.
+      if (this.pausedFrames >= 3 && !this.dirty) {
+        requestAnimationFrame(this.frame);
+        return;
+      }
+      this.pausedFrames++;
+    } else {
+      this.pausedFrames = 0;
+      this.accumulator += frameTime;
+      while (this.accumulator >= GameEngine.FIXED_DT) {
+        for (const u of this.updatables) u.update(GameEngine.FIXED_DT);
+        this.accumulator -= GameEngine.FIXED_DT;
+      }
     }
+    this.dirty = false;
 
     const alpha = this.accumulator / GameEngine.FIXED_DT;
     for (const r of this.renderables) r.render(alpha);
+    this.renderer.info.reset();
     this.retro.render(this.scene, this.camera, now);
     requestAnimationFrame(this.frame);
   };
@@ -88,5 +115,6 @@ export class GameEngine {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.retro.setResolution(GameEngine.RENDER_HEIGHT, window.innerWidth / window.innerHeight);
+    this.dirty = true;
   };
 }
