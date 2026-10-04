@@ -18,6 +18,33 @@ const CSS = `
 #result button:active { background: var(--amber); color: var(--bg); }
 `;
 
+const STORE_KEY = 'psg-stats';
+interface Saved {
+  runs: number;
+  wins: number;
+  best: number | null;
+  /** 승리한 판에서 쓰인 방식의 누적 횟수 — 어느 경로가 지배적인지 장기적으로 보려는 기록. */
+  ways: Record<'front' | 'tunnel' | 'annihilate' | 'kill', number>;
+}
+const EMPTY: Saved = { runs: 0, wins: 0, best: null, ways: { front: 0, tunnel: 0, annihilate: 0, kill: 0 } };
+
+function load(): Saved {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return { ...EMPTY, ...JSON.parse(raw), ways: { ...EMPTY.ways, ...JSON.parse(raw).ways } };
+  } catch {
+    // 저장소 차단(시크릿 모드 등)이어도 게임은 계속된다.
+  }
+  return { ...EMPTY, ways: { ...EMPTY.ways } };
+}
+function save(v: Saved): void {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(v));
+  } catch {
+    // 무시
+  }
+}
+
 const fmt = (s: number): string => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 /** 승리/패배 결과와 이번 판의 플레이 방식. 어떤 경로가 얼마나 쓰였는지 보여 줘, 밸런스(한 경로가 지배적인가)를 눈으로 확인한다. */
@@ -43,11 +70,34 @@ export class ResultScreen implements Renderable {
     const title = won ? '탈출 성공' : this.game.reason === 'time' ? '시간 초과' : '신호 소실';
     const sub = won ? '핵심 샘플을 확보했습니다' : this.game.reason === 'time' ? '제한 시간 안에 탈출하지 못했습니다' : '체력이 모두 소진되었습니다';
 
+    const used = { tunnel: s.tunnelOk > 0, annihilate: s.crates > 0, kill: s.kills > 0 };
+    const front = !used.tunnel && !used.annihilate && !used.kill;
     const ways: string[] = [];
-    if (s.tunnelOk > 0) ways.push('우회(터널링)');
-    if (s.crates > 0) ways.push('소멸(E=mc²)');
-    if (s.kills > 0) ways.push('제압');
-    if (ways.length === 0) ways.push('정면 돌파');
+    if (used.tunnel) ways.push('우회(터널링)');
+    if (used.annihilate) ways.push('소멸(E=mc²)');
+    if (used.kill) ways.push('제압');
+    if (front) ways.push('정면 돌파');
+
+    const rec = load();
+    rec.runs++;
+    let newBest = false;
+    if (won) {
+      rec.wins++;
+      if (rec.best === null || this.game.elapsed < rec.best) {
+        rec.best = this.game.elapsed;
+        newBest = true;
+      }
+      if (front) rec.ways.front++;
+      if (used.tunnel) rec.ways.tunnel++;
+      if (used.annihilate) rec.ways.annihilate++;
+      if (used.kill) rec.ways.kill++;
+    }
+    save(rec);
+    const total = rec.ways;
+    const history = rec.wins
+      ? `누적 승리 ${rec.wins}/${rec.runs}판 · 정면 ${total.front} · 우회 ${total.tunnel} · 소멸 ${total.annihilate} · 제압 ${total.kill}`
+      : `누적 ${rec.runs}판`;
+    const best = rec.best === null ? '' : `<div class="sub">최고 기록 ${fmt(rec.best)}${newBest ? ' · 신기록!' : ''}</div>`;
 
     this.el.className = `on ${won ? 'win' : 'lose'}`;
     this.el.innerHTML = `
@@ -61,6 +111,8 @@ export class ResultScreen implements Renderable {
         <tr><td>발각된 횟수</td><td>${s.spotted}</td></tr>
       </table>
       <div class="style">플레이 방식: ${ways.join(' + ')}</div>
+      ${best}
+      <div class="sub" style="opacity:.7">${history}</div>
       <button type="button">다시 시작</button>`;
     // pointerdown 전파를 막아야 Input의 터치 핸들러가 이 탭을 스틱/시점으로 가로채지 않는다.
     const btn = this.el.querySelector('button')!;
