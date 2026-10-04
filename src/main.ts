@@ -17,6 +17,8 @@ import { GameState } from './game/GameState';
 import { Objective } from './objective/Objective';
 import { MissionHud } from './ui/MissionHud';
 import { ResultScreen } from './ui/ResultScreen';
+import { TutorialHints } from './ui/TutorialHints';
+import { DebugStats } from './ui/DebugStats';
 
 const engine = new GameEngine(document.getElementById('app')!);
 engine.scene.background = new THREE.Color(0x0d0f0a);
@@ -61,6 +63,10 @@ engine.addRenderable(new HealthHud(player, enemies));
 engine.addRenderable(objective);
 engine.addRenderable(new MissionHud(player, objective, game));
 engine.addRenderable(new ResultScreen(game));
+engine.addRenderable(new TutorialHints(player, tunneling, annihilation, enemies, game, input.isTouch));
+engine.addRenderable(new DebugStats(engine.renderer, () => engine.renderSize()));
+// 시작 안내 화면/포인터 해제 중에는 일시정지. 게임이 끝난 뒤(결과 화면)에는 풀어서 화면이 계속 갱신되게 한다.
+engine.paused = () => !input.locked && game.status === 'playing';
 engine.start();
 
 // 개발 중 콘솔/자동 테스트에서 상태를 들여다보기 위한 훅. 프로덕션 빌드에서는 트리셰이킹으로 제거된다.
